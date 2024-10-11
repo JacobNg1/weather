@@ -1,49 +1,33 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request
 import requests
 
 app = Flask(__name__)
 
-# 配置你的API密钥
-API_KEY = 'your_openweathermap_api_key'
-BASE_URL = 'http://api.openweathermap.org/data/2.5/weather'
+# City codes for different cities
+CITY_CODES = {
+    "Beijing": "101010100",
+    "Shanghai": "101020100",
+    "Guangzhou": "101280101",
+    "Shenzhen": "101280601",
+    "Chengdu": "101270101",
+    # 可以添加更多城市及其城市代码
+}
 
-# 全局错误处理
-@app.errorhandler(Exception)
-def handle_exception(e):
-    return jsonify({"error": str(e)}), 500
 
-@app.route('/')
+@app.route('/', methods=['GET', 'POST'])
 def index():
-    return render_template('index.html')
+    weather_data = {}
 
-@app.route('/weather', methods=['POST'])
-def get_weather():
-    city_name = request.form.get('city')
-    if not city_name:
-        return jsonify({"error": "City name is required"}), 400
+    if request.method == 'POST':
+        city_name = request.form['city']
+        city_code = CITY_CODES.get(city_name)
 
-    try:
-        params = {
-            'q': city_name,
-            'appid': API_KEY,
-            'units': 'metric',
-            'lang': 'zh_cn'
-        }
-        response = requests.get(BASE_URL, params=params)
-        if response.status_code != 200:
-            return jsonify({"error": f"Error fetching data: {response.status_code}"}), response.status_code
+        if city_code:
+            response = requests.get(f"http://t.weather.itboy.net/api/weather/city/{city_code}")
+            weather_data = response.json()
 
-        data = response.json()
-        weather = {
-            'city': data['name'],
-            'temperature': data['main']['temp'],
-            'description': data['weather'][0]['description'],
-            'icon': data['weather'][0]['icon']
-        }
-        return jsonify(weather)
+    return render_template('index.html', weather=weather_data, cities=CITY_CODES.keys())
 
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
